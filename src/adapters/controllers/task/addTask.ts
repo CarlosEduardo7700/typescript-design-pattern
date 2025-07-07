@@ -4,6 +4,7 @@ import { MissingParamError } from "../../presentations/api/errors/missing-param-
 import {
   badRequest,
   created,
+  serverError,
 } from "../../presentations/api/httpResponses/httpResponses";
 import { Request, Response } from "express";
 import { DateValidator } from "../../interfaces/dateValidator";
@@ -17,22 +18,26 @@ export class AddTaskController {
   ){}
 
   async handle(httpRequest: HttpRequest): Promise<HttpResponse> {
-    const requiredFields = ["title", "description", "date"];
+    try {
+      const requiredFields = ["title", "description", "date"];
 
-    for (const field of requiredFields) {
-      if (!httpRequest.body[field]) {
-        return badRequest(new MissingParamError(field));
+      for (const field of requiredFields) {
+        if (!httpRequest.body[field]) {
+          return badRequest(new MissingParamError(field));
+        }
       }
+      const { title, description, date } = httpRequest.body;
+
+      const isValid = this.dateValidator.isValid(date);
+
+      if (!isValid) {
+        return badRequest(new InvalidParamError("date"));
+      }
+
+      const task = await this.addTask.add({ title, description, date});
+      return created(task);
+    } catch (error: any) {
+      return serverError(error);
     }
-    const { title, description, date } = httpRequest.body;
-
-    const isValid = this.dateValidator.isValid(date);
-
-    if (!isValid) {
-      return badRequest(new InvalidParamError("date"));
-    }
-
-    const task = await this.addTask.add({ title, description, date});
-    return created(task);
   }
 }
